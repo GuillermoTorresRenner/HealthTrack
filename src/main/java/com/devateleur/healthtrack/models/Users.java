@@ -12,10 +12,13 @@ public class Users {
    
 
     public void actualizarPeso(double nuevoPeso) {
-        // Error detectado: el método debería asignar el nuevo peso, pero actualmente resta 1 al peso actual
-        // this.peso -= 1; // Esta línea es incorrecta, debería ser unasignación directa
-        // Corrección del error lógico
-        this.peso = nuevoPeso; // Asignar el nuevo peso directamente
+        /* Error lógico inicial
+        this.peso = this.peso - 1;
+        */
+
+        //Corrección del error lógico
+        this.peso = nuevoPeso; 
+     
     }
 
     public void mostrarInformacion() {

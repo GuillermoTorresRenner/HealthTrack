@@ -26,7 +26,7 @@
           <h1 class="text-5xl font-bold mb-4">Bienvenido a HealthTrack</h1>
           <p
             class="text-xl mb-8 opacity-90"
-            th:text="'Hola ' + ${usuario.nombre} + ', controla tu peso de manera fácil'"
+            th:text="${usuario != null ? 'Hola ' + usuario.nombre + ', controla tu peso de manera fácil' : 'Hola Usuario, controla tu peso de manera fácil'}"
           >
             Hola Usuario, controla tu peso de manera fácil
           </p>
@@ -53,13 +53,16 @@
           <div class="text-center space-y-4">
             <p class="text-gray-600">
               <span class="font-semibold">Nombre:</span>
-              <span th:text="${usuario.nombre}" class="text-blue-600"
+              <span
+                th:text="${usuario != null ? usuario.nombre : 'Usuario'}"
+                class="text-blue-600"
                 >Usuario</span
               >
             </p>
             <p class="text-gray-600">Peso actual:</p>
             <p class="text-blue-600 font-bold text-5xl">
-              <span th:text="${usuario.peso}">75.5</span
+              <span th:text="${usuario != null ? usuario.peso : '75.5'}"
+                >75.5</span
               ><span class="text-2xl ml-1">kg</span>
             </p>
           </div>
@@ -87,7 +90,7 @@
                 step="0.1"
                 max="500"
                 required
-                th:value="${usuario.peso}"
+                th:value="${usuario != null ? usuario.peso : '70.0'}"
                 class="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Ej: 70.5"
               />
