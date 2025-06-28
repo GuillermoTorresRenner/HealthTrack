@@ -12,8 +12,10 @@ public class Users {
    
 
     public void actualizarPeso(double nuevoPeso) {
-        // no corrijas esto, es parte del ejercicio
-        this.peso -= 1;
+        // Error detectado: el método debería asignar el nuevo peso, pero actualmente resta 1 al peso actual
+        // this.peso -= 1; // Esta línea es incorrecta, debería ser unasignación directa
+        // Corrección del error lógico
+        this.peso = nuevoPeso; // Asignar el nuevo peso directamente
     }
 
     public void mostrarInformacion() {
