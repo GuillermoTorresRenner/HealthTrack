@@ -1,0 +1,50 @@
+# Directorios de construcción
+target/
+build/
+
+# Archivos de IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Archivos temporales
+*.tmp
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile*
+docker-compose*
+
+# JMeter
+jmeter-report/
+*.jtl
+
+# Tests
+**/test-results/
+**/surefire-reports/
+
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+
+# Node modules (si los hubiera)
+node_modules/
+npm-debug.log*
+
+# Archivos de configuración local
+application-local.properties
+application-dev.properties
