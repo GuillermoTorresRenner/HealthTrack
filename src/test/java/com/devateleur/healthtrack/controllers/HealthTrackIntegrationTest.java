@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,21 +30,38 @@ class HealthTrackIntegrationTest {
     
     @Test
     @Order(1)
-    @DisplayName("IT-001: Debería cargar la página principal correctamente")
-    void deberiaCargarPaginaPrincipal() throws Exception {
+    @Tag("smoke")
+    @DisplayName("Debería poder acceder a la página principal")
+    void smokeTestPaginaPrincipal() throws Exception {
+        ResponseEntity<String> response = restTemplate.getForEntity(getBaseUrl() + "/", String.class);
+        assertEquals(200, response.getStatusCode().value());
+        String body = response.getBody();
+        assertNotNull(body);
+        assertTrue(body.contains("HealthTrack")); // Verificar que es la página correcta
+    }
+    
+    @Test
+    @Order(2)
+    @DisplayName("DATOS: Debería enviar correctamente los atributos del usuario al body")
+    void deberiaEnviarAtributosUsuarioAlBody() throws Exception {
         ResponseEntity<String> response = restTemplate.getForEntity(getBaseUrl() + "/", String.class);
         
         assertEquals(200, response.getStatusCode().value());
         String body = response.getBody();
         assertNotNull(body);
-        assertTrue(body.contains("HealthTrack"));
-        assertTrue(body.contains("Juan"));
-        assertTrue(body.contains("70.0"));
+        assertTrue(body.contains("Juan"), "El nombre del usuario debe aparecer en el HTML");
+        assertTrue(body.contains("70.0"), "El peso del usuario debe aparecer en el HTML");
+        assertTrue(body.contains("Hola Juan"), "El saludo personalizado debe aparecer");
+        assertTrue(body.contains("kg"), "La unidad 'kg' debe aparecer para el peso");
     }
-    
+    /*
+     * Valida que el formulario de actualización de peso se muestra correctamente
+     * y que contiene los elementos esperados. ACTÚA COMO TEST DE REGRESIÓN
+     */
     @Test
-    @Order(2)
-    @DisplayName("IT-002: Debería mostrar el formulario de actualización de peso")
+    @Tag("regression")
+    @Order(3)
+    @DisplayName("Debería mostrar el formulario de actualización de peso")
     void deberiaMostrarFormularioActualizacion() throws Exception {
         ResponseEntity<String> response = restTemplate.getForEntity(getBaseUrl() + "/", String.class);
         
