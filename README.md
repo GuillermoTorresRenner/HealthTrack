@@ -68,25 +68,36 @@ La presencia de este error evidencia las siguientes deficiencias en el proceso d
   }
   ```
 
-#### 2. Falta de Testing de Integración
+#### 2. Falta de Testing de Humo
 
-- **Problema:** No se prueba el flujo completo desde el formulario hasta la actualización
+- **Problema:** No se prueba que el sistema pueda ser simplemente levantado.
+- **Solución:** Implementar tests de humo que verifiquen el levantamiento de la aplicación
+  aplicación
+
+#### 3. Falta de Testing de Integración
+
+- **Problema:** No se prueba el flujo completo desde el formulario hasta la actualización de los datos ingresados, por lo cual pudieran no detectarse tanto errores en la lógica como en los componentes visuales de la aplicación.
 - **Solución:** Tests que verifiquen la integración controller-modelo-vista
 
-#### 3. Ausencia de Revisión de Código
+#### 4. Ausencia de Revisión de la calidad del código
 
-- **Problema:** El error es evidente y hubiera sido detectado en una revisión
-- **Solución:** Implementar code reviews obligatorios antes de merge
-
-#### 4. Falta de Validación Manual
-
-- **Problema:** No se realizaron pruebas manuales básicas de la funcionalidad
-- **Solución:** Checklist de testing manual para funcionalidades críticas
+- **Problema:** Con la sintegración de SonarCloud, no se revisa la calidad del código ni se detectan problemas potenciales
+- **Solución:** Integrar SonarCloud en el pipeline de CI/CD para análisis de calidad.
 
 #### 5. Sin Testing de Aceptación
 
 - **Problema:** No se validó que el software cumple con los requisitos del usuario
 - **Solución:** Definir criterios de aceptación y casos de prueba específicos
+
+#### 5. Sin pruebas de regresión
+
+- **Problema:** No se realizan pruebas de regresión para asegurar que los cambios no rompan funcionalidades existentes
+- **Solución:** Implementar un conjunto de pruebas de regresión que se ejecuten en cada despliegue.
+
+#### 5. Falta de testing de rendimiento
+
+- **Problema:** No se verifica que la aplicación pueda manejar múltiples usuarios y cargas de datos
+- **Solución:** Implementar pruebas de carga y estrés para evaluar el rendimiento bajo condiciones reales.
 
 ## Lecciones Aprendidas
 
@@ -104,4 +115,5 @@ Este ejercicio demuestra que:
 3. Automatizar pruebas en el pipeline CI/CD
 4. Realizar testing manual sistemático
 5. Implementar revisiones de código obligatorias
+
 # HealthTrack
