@@ -89,12 +89,12 @@ La presencia de este error evidencia las siguientes deficiencias en el proceso d
 - **Problema:** No se validó que el software cumple con los requisitos del usuario
 - **Solución:** Definir criterios de aceptación y casos de prueba específicos
 
-#### 5. Sin pruebas de regresión
+#### 6. Sin pruebas de regresión
 
 - **Problema:** No se realizan pruebas de regresión para asegurar que los cambios no rompan funcionalidades existentes
 - **Solución:** Implementar un conjunto de pruebas de regresión que se ejecuten en cada despliegue.
 
-#### 5. Falta de testing de rendimiento
+#### 7. Falta de testing de rendimiento
 
 - **Problema:** No se verifica que la aplicación pueda manejar múltiples usuarios y cargas de datos
 - **Solución:** Implementar pruebas de carga y estrés para evaluar el rendimiento bajo condiciones reales.
