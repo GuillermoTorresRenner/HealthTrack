@@ -1,0 +1,51 @@
+version: "3.8"
+
+services:
+  healthtrack:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: healthtrack-app
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/actuator/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - healthtrack-network
+
+  # Base de datos (descomenta si necesitas una)
+  # database:
+  #   image: postgres:15-alpine
+  #   container_name: healthtrack-db
+  #   environment:
+  #     POSTGRES_DB: healthtrack
+  #     POSTGRES_USER: healthtrack
+  #     POSTGRES_PASSWORD: healthtrack123
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - healthtrack-network
+
+networks:
+  healthtrack-network:
+    driver: bridge
+# volumes:
+#   postgres_data:

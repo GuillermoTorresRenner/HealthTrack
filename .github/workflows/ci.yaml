@@ -1,4 +1,5 @@
-name: workflow HealthTrack
+name: HealthTrack CI/CD Pipeline
+
 on:
   push:
     branches:
@@ -7,9 +8,283 @@ on:
     branches:
       - main
 
+env:
+  DOCKER_REGISTRY: docker.io
+  DOCKER_REPOSITORY: lebateleur/healttrack
+  JAVA_VERSION: 17
+
 jobs:
-  build:
+  ci-cd-pipeline:
+    name: Complete CI/CD Pipeline
     runs-on: ubuntu-latest
+    services:
+      selenium:
+        image: selenium/standalone-chrome:latest
+        ports:
+          - 4444:4444
+        options: --shm-size=2gb
     steps:
-      - name: Checkout code
+      - name: Checkout código
         uses: actions/checkout@v4
+
+      - name: Configurar JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: "temurin"
+          cache: maven
+
+      - name: Ejecutar Tests Unitarios
+        run: |
+          echo "::group::Tests Unitarios"
+          ./mvnw test -Dtest="**/*Test.java" -DfailIfNoTests=false
+          echo "::endgroup::"
+
+      - name: Generar reporte de tests unitarios
+        if: always()
+        run: |
+          mkdir -p reports/unit-tests
+          cp -r target/surefire-reports/* reports/unit-tests/ || true
+
+      - name: Ejecutar Tests de Integración
+        run: |
+          echo "::group::Tests de Integración"
+          ./mvnw test -Dtest="**/*IntegrationTest.java" -DfailIfNoTests=false
+          echo "::endgroup::"
+
+      - name: Generar reporte de tests de integración
+        if: always()
+        run: |
+          mkdir -p reports/integration-tests
+          cp -r target/surefire-reports/* reports/integration-tests/ || true
+
+      - name: Cache SonarQube packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Análisis de Calidad de Código con SonarQube
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          echo "::group::SonarQube Analysis"
+          ./mvnw sonar:sonar \
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+            -Dsonar.junit.reportPaths=target/surefire-reports
+          echo "::endgroup::"
+
+      - name: Generar reporte SonarQube
+        if: always()
+        run: |
+          mkdir -p reports/sonarqube
+          echo "# SonarQube Analysis Report" > reports/sonarqube/README.md
+          echo "Proyecto: ${{ secrets.SONAR_PROJECT_KEY }}" >> reports/sonarqube/README.md
+          echo "Organización: ${{ secrets.SONAR_ORGANIZATION }}" >> reports/sonarqube/README.md
+          echo "Dashboard: https://sonarcloud.io/project/overview?id=${{ secrets.SONAR_PROJECT_KEY }}" >> reports/sonarqube/README.md
+          echo "Commit: ${{ github.sha }}" >> reports/sonarqube/README.md
+
+      - name: Construir aplicación
+        run: |
+          echo "::group::Build de la aplicación"
+          ./mvnw clean package -DskipTests
+          echo "::endgroup::"
+
+      - name: Iniciar aplicación en background
+        run: |
+          echo "::group::Iniciando aplicación"
+          java -jar target/healthtrack-*.jar &
+          APP_PID=$!
+          echo "APP_PID=$APP_PID" >> $GITHUB_ENV
+          sleep 30
+
+          # Verificar que la aplicación esté ejecutándose
+          curl -f http://localhost:8080/actuator/health || exit 1
+          echo "Aplicación iniciada correctamente"
+          echo "::endgroup::"
+        env:
+          SPRING_PROFILES_ACTIVE: test
+
+      - name: Ejecutar Tests Selenium
+        run: |
+          echo "::group::Tests Selenium"
+          ./mvnw test -Dtest="**/*SeleniumTest.java" -DfailIfNoTests=false
+          echo "::endgroup::"
+        env:
+          SELENIUM_REMOTE_URL: http://localhost:4444/wd/hub
+
+      - name: Generar reporte de tests Selenium
+        if: always()
+        run: |
+          mkdir -p reports/selenium-tests
+          cp -r target/surefire-reports/* reports/selenium-tests/ || true
+
+      - name: Instalar JMeter
+        run: |
+          echo "::group::Instalando JMeter"
+          wget -q https://downloads.apache.org//jmeter/binaries/apache-jmeter-5.6.3.tgz
+          tar -xzf apache-jmeter-5.6.3.tgz
+          sudo mv apache-jmeter-5.6.3 /opt/jmeter
+          echo "/opt/jmeter/bin" >> $GITHUB_PATH
+          jmeter --version
+          echo "::endgroup::"
+
+      - name: Ejecutar Tests de Performance JMeter
+        run: |
+          echo "::group::Tests JMeter"
+          mkdir -p reports/jmeter
+
+          # Verificar que el archivo jmeter.jmx existe
+          if [ -f "jmeter.jmx" ]; then
+            echo "Usando archivo jmeter.jmx del proyecto"
+            jmeter -n -t jmeter.jmx \
+              -l reports/jmeter/results.jtl \
+              -e -o reports/jmeter/html-report \
+              -Jthreads=5 \
+              -Jrampup=10 \
+              -Jduration=30
+          else
+            echo "❌ Archivo jmeter.jmx no encontrado en la raíz del proyecto"
+            exit 1
+          fi
+          echo "::endgroup::"
+
+      - name: Detener aplicación
+        if: always()
+        run: |
+          if [ ! -z "$APP_PID" ]; then
+            kill $APP_PID || true
+            sleep 5
+          fi
+
+      - name: Configurar Docker Build
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔐 Login a Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extraer metadata Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REPOSITORY }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Construir y subir imagen Docker
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generar reporte consolidado
+        if: always()
+        run: |
+          mkdir -p consolidated-report
+          echo "# HealthTrack - Reporte de Pipeline CI/CD" > consolidated-report/README.md
+          echo "Fecha: $(date)" >> consolidated-report/README.md
+          echo "Commit: ${{ github.sha }}" >> consolidated-report/README.md
+          echo "Branch: ${{ github.ref_name }}" >> consolidated-report/README.md
+          echo "" >> consolidated-report/README.md
+          echo "## 🚀 Información del Deploy:" >> consolidated-report/README.md
+          echo "**Docker Image:** \`${{ env.DOCKER_REPOSITORY }}\`" >> consolidated-report/README.md
+          echo "**Tags:** ${{ steps.meta.outputs.tags }}" >> consolidated-report/README.md
+          echo "**Digest:** ${{ steps.build.outputs.digest }}" >> consolidated-report/README.md
+          echo "" >> consolidated-report/README.md
+          echo "## 📊 Estructura de Reportes:" >> consolidated-report/README.md
+          echo "- \`unit-tests/\` - Reportes de tests unitarios" >> consolidated-report/README.md
+          echo "- \`integration-tests/\` - Reportes de tests de integración" >> consolidated-report/README.md
+          echo "- \`sonarqube/\` - Análisis de calidad de código" >> consolidated-report/README.md
+          echo "- \`selenium-tests/\` - Reportes de tests Selenium" >> consolidated-report/README.md
+          echo "- \`jmeter/\` - Reportes de performance JMeter" >> consolidated-report/README.md
+
+          # Copiar todos los reportes
+          cp -r reports/* consolidated-report/ || true
+
+      - name: Subir reportes de tests unitarios
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: reports/unit-tests/
+          retention-days: 30
+
+      - name: 📤 Subir reportes de tests de integración
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-reports
+          path: reports/integration-tests/
+          retention-days: 30
+
+      - name: 📤 Subir reportes SonarQube
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonarqube-reports
+          path: reports/sonarqube/
+          retention-days: 30
+
+      - name: 📤 Subir reportes de tests Selenium
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selenium-test-reports
+          path: reports/selenium-tests/
+          retention-days: 30
+
+      - name: Subir reportes JMeter
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jmeter-performance-reports
+          path: reports/jmeter/
+          retention-days: 30
+
+      - name: Subir reporte consolidado
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: consolidated-pipeline-report
+          path: consolidated-report/
+          retention-days: 90
+
+      - name: Generar summary del pipeline
+        if: always()
+        run: |
+          echo "## 🎯 Pipeline Completado" >> $GITHUB_STEP_SUMMARY
+          echo "**Proyecto:** HealthTrack" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🐳 Docker Image" >> $GITHUB_STEP_SUMMARY
+          echo "**Repository:** \`${{ env.DOCKER_REPOSITORY }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags:** ${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Digest:** ${{ steps.build.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Reportes Disponibles" >> $GITHUB_STEP_SUMMARY
+          echo "- Tests Unitarios" >> $GITHUB_STEP_SUMMARY
+          echo "- Tests de Integración" >> $GITHUB_STEP_SUMMARY
+          echo "- Análisis SonarQube" >> $GITHUB_STEP_SUMMARY
+          echo "- Tests Selenium" >> $GITHUB_STEP_SUMMARY
+          echo "- Tests JMeter Performance" >> $GITHUB_STEP_SUMMARY
+          echo "- Reporte Consolidado" >> $GITHUB_STEP_SUMMARY
