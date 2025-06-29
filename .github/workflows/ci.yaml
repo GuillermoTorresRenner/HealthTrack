@@ -125,15 +125,26 @@ jobs:
           mkdir -p reports/selenium-tests
           cp -r target/surefire-reports/* reports/selenium-tests/ || true
 
-      - name: Instalar JMeter
+      - name: Descargar y Configurar JMeter
+        id: jmeter-setup
         run: |
-          echo "::group::Instalando JMeter"
-          wget -q https://downloads.apache.org//jmeter/binaries/apache-jmeter-5.6.3.tgz
-          tar -xzf apache-jmeter-5.6.3.tgz
-          sudo mv apache-jmeter-5.6.3 /opt/jmeter
-          echo "/opt/jmeter/bin" >> $GITHUB_PATH
+          JMETER_VERSION="5.6.3"
+          JMETER_TGZ="apache-jmeter-${JMETER_VERSION}.tgz"
+          JMETER_DIR="apache-jmeter-${JMETER_VERSION}"
+          JMETER_INSTALL_PATH="${{ runner.temp }}/${JMETER_DIR}"
+
+          echo "Descargando JMeter"
+          wget "https://dlcdn.apache.org//jmeter/binaries/${JMETER_TGZ}"
+
+          echo "Descomprimir JMeter"
+          tar -xzf ${JMETER_TGZ} -C ${{ runner.temp }}
+
+          echo "${JMETER_INSTALL_PATH}/bin" >> $GITHUB_PATH
+
+      - name: Verificando instalación de JMeter
+        run: |
           jmeter --version
-          echo "::endgroup::"
+          echo "JMeter verificado correctamente"
 
       - name: Ejecutar Tests de Performance JMeter
         run: |
