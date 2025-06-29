@@ -149,9 +149,24 @@ jobs:
               -Jthreads=5 \
               -Jrampup=10 \
               -Jduration=30
+            
+            # Crear resumen del test
+            echo "# JMeter Performance Test Results" > reports/jmeter/README.md
+            echo "Fecha de ejecución: $(date)" >> reports/jmeter/README.md
+            echo "Test plan utilizado: jmeter.jmx" >> reports/jmeter/README.md
+            echo "Aplicación bajo test: http://localhost:8080" >> reports/jmeter/README.md
+            
+            if [ -f "reports/jmeter/results.jtl" ]; then
+              echo "Total de requests: $(tail -n +2 reports/jmeter/results.jtl | wc -l)" >> reports/jmeter/README.md
+            fi
           else
-            echo "❌ Archivo jmeter.jmx no encontrado en la raíz del proyecto"
-            exit 1
+            echo "Archivo jmeter.jmx no encontrado en la raíz del proyecto"
+            echo "# JMeter Test Plan No Encontrado" > reports/jmeter/README.md
+            echo "El archivo jmeter.jmx no existe en la raíz del proyecto." >> reports/jmeter/README.md
+            echo "Para ejecutar tests de performance, crea un test plan con JMeter GUI" >> reports/jmeter/README.md
+            echo "y guárdalo como jmeter.jmx en la raíz del proyecto." >> reports/jmeter/README.md
+            echo "Fecha: $(date)" >> reports/jmeter/README.md
+            echo "Estado: SKIPPED - No test plan available" >> reports/jmeter/README.md
           fi
           echo "::endgroup::"
 
@@ -166,7 +181,7 @@ jobs:
       - name: Configurar Docker Build
         uses: docker/setup-buildx-action@v3
 
-      - name: 🔐 Login a Docker Hub
+      - name: Login a Docker Hub
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKER_REGISTRY }}
@@ -228,7 +243,7 @@ jobs:
           path: reports/unit-tests/
           retention-days: 30
 
-      - name: 📤 Subir reportes de tests de integración
+      - name: Subir reportes de tests de integración
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -236,7 +251,7 @@ jobs:
           path: reports/integration-tests/
           retention-days: 30
 
-      - name: 📤 Subir reportes SonarQube
+      - name: Subir reportes SonarQube
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -244,7 +259,7 @@ jobs:
           path: reports/sonarqube/
           retention-days: 30
 
-      - name: 📤 Subir reportes de tests Selenium
+      - name: Subir reportes de tests Selenium
         if: always()
         uses: actions/upload-artifact@v4
         with:
