@@ -104,3 +104,4 @@ Este ejercicio demuestra que:
 3. Automatizar pruebas en el pipeline CI/CD
 4. Realizar testing manual sistemático
 5. Implementar revisiones de código obligatorias
+# HealthTrack
